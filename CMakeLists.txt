@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 
 #=== Main App ===
 set( APP_NAME "balanced_trees" )
-add_executable( ${APP_NAME})
+add_executable( ${APP_NAME} 
+"src/main.cpp")
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib )
 target_compile_features( ${APP_NAME}  PUBLIC cxx_std_17 )
