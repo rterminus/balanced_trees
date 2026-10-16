@@ -123,7 +123,56 @@ template <typename T> class AVL {
 
         return node;
     };
-    auto remove_node(node_pointer node, value_type value) -> node_pointer;
+    auto remove_node(node_pointer node, value_type value) -> node_pointer {
+        if (node == nullptr)
+            return node;
+
+        if (value < node->value) {
+            node->n_left = remove_node(node->n_left, value);
+        } else if (value > node->value) {
+            node->n_right = remove_node(node->n_right, value);
+        } else {
+            if (node->n_left == nullptr || node->n_right == nullptr) {
+                if (node->n_left != nullptr) {
+                    auto new_node = node->n_left;
+                    delete node;
+
+                    return new_node;
+                } else {
+                    auto new_node = node->n_right;
+                    delete node;
+
+                    return new_node;
+                }
+            } else {
+                auto successor = get_min_node(node->n_right);
+                node->value = successor->value;
+
+                node->n_right = remove_node(node->n_right, successor->value);
+            }
+        }
+
+        if (node == nullptr)
+            return node;
+
+        node->height = update_height(node);
+
+        height_type bf = get_balance_factor(node);
+
+        if (bf > 1 && get_balance_factor(node->n_left) >= 0) {
+            return simple_right_rotation(node);
+        } else if (bf < -1 && get_balance_factor(node->n_right) <= 0) {
+            return simple_left_rotation(node);
+        } else if (bf > 1 && get_balance_factor(node->n_left) < 0) {
+            node->n_left = simple_left_rotation(node->n_left);
+            return simple_right_rotation(node);
+        } else if (bf < -1 && get_balance_factor(node->n_right) > 0) {
+            node->n_right = simple_right_rotation(node->n_right);
+            return simple_left_rotation(node);
+        }
+
+        return node;
+    };
     auto search_node(node_pointer node, value_type value) -> bool {
         if (node == nullptr)
             return false;
@@ -136,6 +185,8 @@ template <typename T> class AVL {
 
         if (node->value > value)
             return search_node(node->n_left, value);
+
+        return false;
     };
     auto inorder_traversal(node_pointer node) -> void {
         if (node == nullptr)
