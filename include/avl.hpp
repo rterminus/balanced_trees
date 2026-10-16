@@ -47,7 +47,13 @@ template <typename T> class AVL {
     };
 
     // utils
-    auto get_min_node(node_pointer node) -> node_pointer;
+    auto get_min_node(node_pointer node) -> node_pointer {
+        while (node->n_left != nullptr) {
+            node = node->n_left;
+        }
+
+        return node;
+    };
     auto update_height(node_pointer node) -> height_type {
         return 1 +
                std::max(get_height(node->n_left), get_height(node->n_right));
@@ -118,7 +124,19 @@ template <typename T> class AVL {
         return node;
     };
     auto remove_node(node_pointer node, value_type value) -> node_pointer;
-    auto search_node(node_pointer node, value_type value) -> bool;
+    auto search_node(node_pointer node, value_type value) -> bool {
+        if (node == nullptr)
+            return false;
+
+        if (node->value == value)
+            return true;
+
+        if (node->value < value)
+            return search_node(node->n_right, value);
+
+        if (node->value > value)
+            return search_node(node->n_left, value);
+    };
     auto inorder_traversal(node_pointer node) -> void {
         if (node == nullptr)
             return;
@@ -132,7 +150,7 @@ template <typename T> class AVL {
         if (node == nullptr)
             return;
 
-        std::cout << prefix << (is_left ? "├── " : "└── " << node->value)
+        std::cout << prefix << (is_left ? "├── " : "└── ") << node->value
                   << "\n";
 
         auto next_prefix = prefix;
