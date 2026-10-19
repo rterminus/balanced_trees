@@ -1,6 +1,7 @@
 #ifndef RB_HPP
 #define RB_HPP
 
+#include <cstdint>
 #include <initializer_list>
 #include <iostream>
 #include <string>
@@ -20,7 +21,8 @@ template <typename T> class RB {
     };
     using node_pointer = Node *; //!< Pointer to a tree node.
 
-    node_pointer root{}; //!< Red-Black tree root.
+    node_pointer root{};           //!< Red-Black tree root.
+    std::size_t rotation_count{0}; // rotation counter for testing purposes
 
     // recursive destroyer
     auto destroy_tree(node_pointer node) -> void {
@@ -81,8 +83,7 @@ template <typename T> class RB {
                     grandfather->color = Color::RED;
                     simple_right_rotation(grandfather);
                 }
-            } 
-            else {
+            } else {
                 node_pointer uncle = grandfather->n_left;
 
                 if (uncle != nullptr && uncle->color == Color::RED) {
@@ -103,7 +104,6 @@ template <typename T> class RB {
         }
         root->color = Color::BLACK;
     }
-
     auto fix_remove(node_pointer x, node_pointer x_parent) -> void {
         while (x != root && get_color(x) == Color::BLACK) {
             if (x == x_parent->n_left) {
@@ -114,20 +114,23 @@ template <typename T> class RB {
                     simple_left_rotation(x_parent);
                     sibling = x_parent->n_right;
                 }
-                if (get_color(sibling->n_left) == Color::BLACK && get_color(sibling->n_right) == Color::BLACK) {
+                if (get_color(sibling->n_left) == Color::BLACK &&
+                    get_color(sibling->n_right) == Color::BLACK) {
                     sibling->color = Color::RED;
                     x = x_parent;
                     x_parent = x->parent;
                 } else {
                     if (get_color(sibling->n_right) == Color::BLACK) {
-                        if (sibling->n_left != nullptr) sibling->n_left->color = Color::BLACK;
+                        if (sibling->n_left != nullptr)
+                            sibling->n_left->color = Color::BLACK;
                         sibling->color = Color::RED;
                         simple_right_rotation(sibling);
                         sibling = x_parent->n_right;
                     }
                     sibling->color = x_parent->color;
                     x_parent->color = Color::BLACK;
-                    if (sibling->n_right != nullptr) sibling->n_right->color = Color::BLACK;
+                    if (sibling->n_right != nullptr)
+                        sibling->n_right->color = Color::BLACK;
                     simple_left_rotation(x_parent);
                     x = root;
                 }
@@ -139,31 +142,46 @@ template <typename T> class RB {
                     simple_right_rotation(x_parent);
                     sibling = x_parent->n_left;
                 }
-                if (get_color(sibling->n_right) == Color::BLACK && get_color(sibling->n_left) == Color::BLACK) {
+                if (get_color(sibling->n_right) == Color::BLACK &&
+                    get_color(sibling->n_left) == Color::BLACK) {
                     sibling->color = Color::RED;
                     x = x_parent;
                     x_parent = x->parent;
                 } else {
                     if (get_color(sibling->n_left) == Color::BLACK) {
-                        if (sibling->n_right != nullptr) sibling->n_right->color = Color::BLACK;
+                        if (sibling->n_right != nullptr)
+                            sibling->n_right->color = Color::BLACK;
                         sibling->color = Color::RED;
                         simple_left_rotation(sibling);
                         sibling = x_parent->n_left;
                     }
                     sibling->color = x_parent->color;
                     x_parent->color = Color::BLACK;
-                    if (sibling->n_left != nullptr) sibling->n_left->color = Color::BLACK;
+                    if (sibling->n_left != nullptr)
+                        sibling->n_left->color = Color::BLACK;
                     simple_right_rotation(x_parent);
                     x = root;
                 }
             }
         }
-        if (x != nullptr) x->color = Color::BLACK;
+        if (x != nullptr)
+            x->color = Color::BLACK;
+    }
+    auto calculate_height(node_pointer node) -> std::int16_t {
+        if (node == nullptr)
+            return 0;
+
+        return 1 + std::max(calculate_height(node->n_left),
+                            calculate_height(node->n_right));
     }
 
     // rotations
     auto simple_right_rotation(node_pointer node) -> node_pointer {
-        if (node == nullptr || node->n_left == nullptr) return node;
+        if (node == nullptr || node->n_left == nullptr)
+            return node;
+
+        rotation_count++;
+
         node_pointer pivot = node->n_left;
         node_pointer original_parent = node->parent;
         node_pointer right_child = pivot->n_right;
@@ -176,18 +194,25 @@ template <typename T> class RB {
             pivot->parent = nullptr;
         } else {
             pivot->parent = original_parent;
-            if (original_parent->n_left == node) original_parent->n_left = pivot;
-            else original_parent->n_right = pivot;
+            if (original_parent->n_left == node)
+                original_parent->n_left = pivot;
+            else
+                original_parent->n_right = pivot;
         }
 
         node->parent = pivot;
-        if (right_child != nullptr) right_child->parent = node;
+        if (right_child != nullptr)
+            right_child->parent = node;
 
         return pivot;
     }
 
     auto simple_left_rotation(node_pointer node) -> node_pointer {
-        if (node == nullptr || node->n_right == nullptr) return node;
+        if (node == nullptr || node->n_right == nullptr)
+            return node;
+
+        rotation_count++;
+
         node_pointer pivot = node->n_right;
         node_pointer original_parent = node->parent;
         node_pointer left_child = pivot->n_left;
@@ -200,38 +225,50 @@ template <typename T> class RB {
             pivot->parent = nullptr;
         } else {
             pivot->parent = original_parent;
-            if (original_parent->n_left == node) original_parent->n_left = pivot;
-            else original_parent->n_right = pivot;
+            if (original_parent->n_left == node)
+                original_parent->n_left = pivot;
+            else
+                original_parent->n_right = pivot;
         }
 
         node->parent = pivot;
-        if (left_child != nullptr) left_child->parent = node;
+        if (left_child != nullptr)
+            left_child->parent = node;
 
         return pivot;
     }
 
     auto search_node(node_pointer node, value_type value) -> bool {
-        if (node == nullptr) return false;
-        if (node->value == value) return true;
-        if (node->value < value) return search_node(node->n_right, value);
-        if (node->value > value) return search_node(node->n_left, value);
+        if (node == nullptr)
+            return false;
+        if (node->value == value)
+            return true;
+        if (node->value < value)
+            return search_node(node->n_right, value);
+        if (node->value > value)
+            return search_node(node->n_left, value);
         return false;
     }
 
     auto inorder_traversal(node_pointer node) -> void {
-        if (node == nullptr) return;
+        if (node == nullptr)
+            return;
         inorder_traversal(node->n_left);
         std::cout << node->value << " ";
         inorder_traversal(node->n_right);
     }
 
-    auto print_tree_visual(node_pointer node, std::string prefix, bool is_left) -> void {
-        if (node == nullptr) return;
+    auto print_tree_visual(node_pointer node, std::string prefix, bool is_left)
+        -> void {
+        if (node == nullptr)
+            return;
         std::cout << prefix << (is_left ? "├── " : "└── ") << node->value
                   << (node->color == Color::RED ? " [V]" : " [P]") << "\n";
         auto next_prefix = prefix;
-        if (is_left) next_prefix += "│   ";
-        else next_prefix += "    ";
+        if (is_left)
+            next_prefix += "│   ";
+        else
+            next_prefix += "    ";
 
         print_tree_visual(node->n_left, next_prefix, true);
         print_tree_visual(node->n_right, next_prefix, false);
@@ -264,25 +301,32 @@ template <typename T> class RB {
         if (parent == nullptr) {
             root = new_node;
         } else {
-            if (new_node->value < parent->value) parent->n_left = new_node;
-            else parent->n_right = new_node;
+            if (new_node->value < parent->value)
+                parent->n_left = new_node;
+            else
+                parent->n_right = new_node;
         }
 
         fix_insert(new_node);
     }
 
     auto insert(std::initializer_list<value_type> values) -> void {
-        for (const auto &value : values) insert(value);
+        for (const auto &value : values)
+            insert(value);
     }
 
     auto remove(value_type value) -> void {
         node_pointer z = root;
         while (z != nullptr) {
-            if (value == z->value) break;
-            if (value < z->value) z = z->n_left;
-            else z = z->n_right;
+            if (value == z->value)
+                break;
+            if (value < z->value)
+                z = z->n_left;
+            else
+                z = z->n_right;
         }
-        if (z == nullptr) return;
+        if (z == nullptr)
+            return;
 
         node_pointer y = z;
         node_pointer x;
@@ -322,12 +366,21 @@ template <typename T> class RB {
     }
 
     auto remove(std::initializer_list<value_type> values) -> void {
-        for (const auto &value : values) remove(value);
+        for (const auto &value : values)
+            remove(value);
     }
 
     auto search(value_type value) -> bool { return search_node(root, value); }
-    auto print_inorder() -> void { inorder_traversal(root); std::cout << "\n"; }
+    auto print_inorder() -> void {
+        inorder_traversal(root);
+        std::cout << "\n";
+    }
     auto print_tree() -> void { print_tree_visual(root, "", false); }
+
+    // testing functions
+    auto reset_rotations() -> void { rotation_count = 0; }
+    auto get_rotations() const -> std::size_t { return rotation_count; }
+    auto get_tree_height() -> std::int16_t { return calculate_height(root); }
 };
 
 #endif // !RB_HPP

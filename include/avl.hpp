@@ -2,6 +2,7 @@
 #define AVL_HPP
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <iostream>
@@ -20,7 +21,8 @@ template <typename T> class AVL {
     };
     using node_pointer = Node *; //!< Pointer to a tree node.
 
-    node_pointer root{}; //!< AVL tree root.
+    node_pointer root{};           //!< AVL tree root.
+    std::size_t rotation_count{0}; // rotation counter for testing purposes
 
     // recursive destroyer
     auto destroy_tree(node_pointer node) -> void {
@@ -58,12 +60,21 @@ template <typename T> class AVL {
         return 1 +
                std::max(get_height(node->n_left), get_height(node->n_right));
     };
+    auto calculate_height(node_pointer node) -> std::int16_t {
+        if (node == nullptr)
+            return 0;
+
+        return 1 + std::max(calculate_height(node->n_left),
+                            calculate_height(node->n_right));
+    }
 
     // rotations
     auto simple_right_rotation(node_pointer node) -> node_pointer {
-        if (node == nullptr || node->n_left == nullptr) {
+        if (node == nullptr || node->n_left == nullptr)
             return node;
-        }
+
+        rotation_count++;
+
         node_pointer pivot = node->n_left;
 
         node_pointer right_child = pivot->n_right;
@@ -76,9 +87,11 @@ template <typename T> class AVL {
         return pivot;
     };
     auto simple_left_rotation(node_pointer node) -> node_pointer {
-        if (node == nullptr || node->n_right == nullptr) {
+        if (node == nullptr || node->n_right == nullptr)
             return node;
-        }
+
+        rotation_count++;
+
         node_pointer pivot = node->n_right;
 
         node_pointer left_child = pivot->n_left;
@@ -235,6 +248,11 @@ template <typename T> class AVL {
     auto search(value_type value) -> bool { return search_node(root, value); };
     auto print_inorder() -> void { inorder_traversal(root); };
     auto print_tree() -> void { print_tree_visual(root, "", false); };
+
+    // testing functions
+    auto reset_rotations() -> void { rotation_count = 0; }
+    auto get_rotations() const -> std::size_t { return rotation_count; }
+    auto get_tree_height() -> std::int16_t { return calculate_height(root); }
 };
 
 #endif // !AVL_HPP
