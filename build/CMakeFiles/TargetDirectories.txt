@@ -1,0 +1,3 @@
+/home/terminus/studies/uni/p4/edb2/balanced_trees/build/CMakeFiles/balanced_trees.dir
+/home/terminus/studies/uni/p4/edb2/balanced_trees/build/CMakeFiles/edit_cache.dir
+/home/terminus/studies/uni/p4/edb2/balanced_trees/build/CMakeFiles/rebuild_cache.dir

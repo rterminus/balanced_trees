@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -pedantic -Wl,--dependency-file=CMakeFiles/balanced_trees.dir/link.d CMakeFiles/balanced_trees.dir/src/main.cpp.o -o balanced_trees
