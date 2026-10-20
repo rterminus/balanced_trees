@@ -22,7 +22,7 @@ template <typename T> class AVL {
     using node_pointer = Node *; //!< Pointer to a tree node.
 
     node_pointer root{};           //!< AVL tree root.
-    std::size_t rotation_count{0}; // rotation counter for testing purposes
+    std::size_t rotation_count{0}; //!< rotation counter for testing purposes
 
     // recursive destroyer
     auto destroy_tree(node_pointer node) -> void {
@@ -106,6 +106,7 @@ template <typename T> class AVL {
 
     // private operations
     auto insert_node(node_pointer node, value_type value) -> node_pointer {
+        // standard bst insertion
         if (node == nullptr) {
             return new Node{value};
         }
@@ -115,21 +116,27 @@ template <typename T> class AVL {
         } else if (value > node->value) {
             node->n_right = insert_node(node->n_right, value);
         } else {
-            return node;
+            return node; // ignore duplicates
         }
 
         node->height = update_height(node);
-
         height_type bf = get_balance_factor(node);
 
+        // rebalancing: left-left case
         if (bf > 1 && value < node->n_left->value) {
             return simple_right_rotation(node);
-        } else if (bf < -1 && value > node->n_right->value) {
+        }
+        // rebalancing: right-right case
+        else if (bf < -1 && value > node->n_right->value) {
             return simple_left_rotation(node);
-        } else if (bf > 1 && value > node->n_left->value) {
+        }
+        // rebalancing: left-right case, chaining two simple rots
+        else if (bf > 1 && value > node->n_left->value) {
             node->n_left = simple_left_rotation(node->n_left);
             return simple_right_rotation(node);
-        } else if (bf < -1 && value < node->n_right->value) {
+        }
+        // rebalancing: right-left case, chaining two simple rots
+        else if (bf < -1 && value < node->n_right->value) {
             node->n_right = simple_right_rotation(node->n_right);
             return simple_left_rotation(node);
         }
@@ -140,27 +147,27 @@ template <typename T> class AVL {
         if (node == nullptr)
             return node;
 
+        // standard bst removal
         if (value < node->value) {
             node->n_left = remove_node(node->n_left, value);
         } else if (value > node->value) {
             node->n_right = remove_node(node->n_right, value);
         } else {
+            // node with only one child or no child
             if (node->n_left == nullptr || node->n_right == nullptr) {
                 if (node->n_left != nullptr) {
                     auto new_node = node->n_left;
                     delete node;
-
                     return new_node;
                 } else {
                     auto new_node = node->n_right;
                     delete node;
-
                     return new_node;
                 }
             } else {
+                // node with two children: get inorder successor
                 auto successor = get_min_node(node->n_right);
                 node->value = successor->value;
-
                 node->n_right = remove_node(node->n_right, successor->value);
             }
         }
@@ -169,17 +176,23 @@ template <typename T> class AVL {
             return node;
 
         node->height = update_height(node);
-
         height_type bf = get_balance_factor(node);
 
+        // rebalancing: left-left case
         if (bf > 1 && get_balance_factor(node->n_left) >= 0) {
             return simple_right_rotation(node);
-        } else if (bf < -1 && get_balance_factor(node->n_right) <= 0) {
+        }
+        // rebalancing: right-right case
+        else if (bf < -1 && get_balance_factor(node->n_right) <= 0) {
             return simple_left_rotation(node);
-        } else if (bf > 1 && get_balance_factor(node->n_left) < 0) {
+        }
+        // rebalancing: left-right case, chaining two simple rots
+        else if (bf > 1 && get_balance_factor(node->n_left) < 0) {
             node->n_left = simple_left_rotation(node->n_left);
             return simple_right_rotation(node);
-        } else if (bf < -1 && get_balance_factor(node->n_right) > 0) {
+        }
+        // rebalancing: right-left case, chaining two simple rots
+        else if (bf < -1 && get_balance_factor(node->n_right) > 0) {
             node->n_right = simple_right_rotation(node->n_right);
             return simple_left_rotation(node);
         }
