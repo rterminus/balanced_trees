@@ -1,10 +1,13 @@
 #ifndef RB_HPP
 #define RB_HPP
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <iostream>
 #include <string>
+#include <vector>
 
 template <typename T> class RB {
     using value_type = T; //!< The node value type.
@@ -21,7 +24,8 @@ template <typename T> class RB {
     };
     using node_pointer = Node *; //!< Pointer to a tree node.
 
-    node_pointer root{};           //!< Red-Black tree root.
+    node_pointer root{nullptr};    //!< Red-Black tree root.
+    std::size_t node_count{0};     //!< number of stored elements
     std::size_t rotation_count{0}; //!< rotation counter for testing purposes
 
     // recursive destroyer
@@ -35,7 +39,7 @@ template <typename T> class RB {
     }
 
     // getters
-    auto get_color(node_pointer node) -> Color {
+    static auto get_color(const Node *node) -> Color {
         if (node == nullptr)
             return Color::BLACK; // null nodes are always black
 
@@ -43,7 +47,7 @@ template <typename T> class RB {
     }
 
     // utils
-    auto get_min_node(node_pointer node) -> node_pointer {
+    static auto get_min_node(node_pointer node) -> node_pointer {
         while (node->n_left != nullptr) {
             node = node->n_left;
         }
@@ -66,6 +70,7 @@ template <typename T> class RB {
 
     auto fix_insert(node_pointer node) -> void {
         while (node->parent != nullptr && node->parent->color == Color::RED) {
+            // a red parent is never the root, so the grandfather exists
             node_pointer grandfather = node->parent->parent;
 
             // parent is left child of grandfather
@@ -116,6 +121,8 @@ template <typename T> class RB {
         root->color = Color::BLACK;
     }
 
+    // x may be null (a "double black" null leaf), so its parent is tracked
+    // separately in x_parent
     auto fix_remove(node_pointer x, node_pointer x_parent) -> void {
         while (x != root && get_color(x) == Color::BLACK) {
             // x is left child
@@ -197,7 +204,7 @@ template <typename T> class RB {
             x->color = Color::BLACK;
     }
 
-    auto calculate_height(node_pointer node) -> std::int16_t {
+    auto calculate_height(const Node *node) const -> int {
         if (node == nullptr)
             return 0;
 
@@ -270,19 +277,7 @@ template <typename T> class RB {
         return pivot;
     }
 
-    auto search_node(node_pointer node, value_type value) -> bool {
-        if (node == nullptr)
-            return false;
-        if (node->value == value)
-            return true;
-        if (node->value < value)
-            return search_node(node->n_right, value);
-        if (node->value > value)
-            return search_node(node->n_left, value);
-        return false;
-    }
-
-    auto inorder_traversal(node_pointer node) -> void {
+    auto inorder_traversal(const Node *node) const -> void {
         if (node == nullptr)
             return;
         inorder_traversal(node->n_left);
@@ -290,57 +285,95 @@ template <typename T> class RB {
         inorder_traversal(node->n_right);
     }
 
-    auto print_tree_visual(node_pointer node, std::string prefix, bool is_left)
-        -> void {
+    auto collect(const Node *node, std::vector<value_type> &out) const -> void {
+        if (node == nullptr)
+            return;
+        collect(node->n_left, out);
+        out.push_back(node->value);
+        collect(node->n_right, out);
+    }
+
+    auto print_tree_visual(const Node *node, const std::string &prefix,
+                           bool is_left) const -> void {
         if (node == nullptr)
             return;
         std::cout << prefix << (is_left ? "├── " : "└── ") << node->value
-                  << (node->color == Color::RED ? " [V]" : " [P]") << "\n";
-        auto next_prefix = prefix;
-        if (is_left)
-            next_prefix += "│   ";
-        else
-            next_prefix += "    ";
+                  << (node->color == Color::RED ? " [R]" : " [B]") << "\n";
+
+        const std::string next_prefix = prefix + (is_left ? "│   " : "    ");
 
         print_tree_visual(node->n_left, next_prefix, true);
         print_tree_visual(node->n_right, next_prefix, false);
+    }
+
+    // returns the black height of the subtree (counting null leaves as 1), or
+    // -1 if any invariant breaks: parent links, bst order, no red node with a
+    // red child, and equal black height on every path
+    auto check_subtree(const Node *node, const Node *parent,
+                       const value_type *lo, const value_type *hi) const
+        -> int {
+        if (node == nullptr)
+            return 1;
+
+        if (node->parent != parent)
+            return -1;
+        if (lo != nullptr && !(*lo < node->value))
+            return -1;
+        if (hi != nullptr && !(node->value < *hi))
+            return -1;
+
+        if (node->color == Color::RED &&
+            (get_color(node->n_left) == Color::RED ||
+             get_color(node->n_right) == Color::RED))
+            return -1;
+
+        const int l = check_subtree(node->n_left, node, lo, &node->value);
+        const int r = check_subtree(node->n_right, node, &node->value, hi);
+        if (l < 0 || r < 0 || l != r)
+            return -1;
+
+        return l + (node->color == Color::BLACK ? 1 : 0);
     }
 
   public:
     RB() = default;
     ~RB() { destroy_tree(root); }
 
-    // interface operations
-    auto insert(value_type value) -> void {
-        node_pointer new_node = new Node{value};
+    // owning raw pointers: copying would double free
+    RB(const RB &) = delete;
+    RB &operator=(const RB &) = delete;
+
+    // interface operations (insert/remove return whether the tree changed)
+    auto insert(value_type value) -> bool {
         node_pointer current = root;
         node_pointer parent = nullptr;
 
-        // bst traversal to find insertion point
+        // bst traversal to find insertion point (no allocation for duplicates)
         while (current != nullptr) {
             parent = current;
-            if (new_node->value < current->value) {
+            if (value < current->value) {
                 current = current->n_left;
-            } else if (new_node->value > current->value) {
+            } else if (current->value < value) {
                 current = current->n_right;
             } else {
-                delete new_node;
-                return; // ignore duplicates
+                return false; // ignore duplicates
             }
         }
 
+        node_pointer new_node = new Node{value};
         new_node->parent = parent;
 
         if (parent == nullptr) {
             root = new_node;
+        } else if (value < parent->value) {
+            parent->n_left = new_node;
         } else {
-            if (new_node->value < parent->value)
-                parent->n_left = new_node;
-            else
-                parent->n_right = new_node;
+            parent->n_right = new_node;
         }
 
+        ++node_count;
         fix_insert(new_node);
+        return true;
     }
 
     auto insert(std::initializer_list<value_type> values) -> void {
@@ -348,24 +381,24 @@ template <typename T> class RB {
             insert(value);
     }
 
-    auto remove(value_type value) -> void {
+    auto remove(value_type value) -> bool {
         node_pointer z = root;
 
         // search for the node
         while (z != nullptr) {
-            if (value == z->value)
-                break;
             if (value < z->value)
                 z = z->n_left;
-            else
+            else if (z->value < value)
                 z = z->n_right;
+            else
+                break;
         }
 
         if (z == nullptr)
-            return; // node not found
+            return false; // node not found
 
         node_pointer y = z;
-        node_pointer x;
+        node_pointer x = nullptr;
         node_pointer x_parent = nullptr;
 
         // keep track of the original color to fix tree later if needed
@@ -404,11 +437,13 @@ template <typename T> class RB {
             y->color = z->color;
         }
         delete z;
+        --node_count;
 
         // if a black node was removed, rb properties might be violated
         if (y_original_color == Color::BLACK) {
             fix_remove(x, x_parent);
         }
+        return true;
     }
 
     auto remove(std::initializer_list<value_type> values) -> void {
@@ -416,17 +451,48 @@ template <typename T> class RB {
             remove(value);
     }
 
-    auto search(value_type value) -> bool { return search_node(root, value); }
-    auto print_inorder() -> void {
+    auto search(const value_type &value) const -> bool {
+        const Node *node = root;
+        while (node != nullptr) {
+            if (value < node->value)
+                node = node->n_left;
+            else if (node->value < value)
+                node = node->n_right;
+            else
+                return true;
+        }
+        return false;
+    }
+    auto size() const -> std::size_t { return node_count; }
+    auto print_inorder() const -> void {
         inorder_traversal(root);
         std::cout << "\n";
     }
-    auto print_tree() -> void { print_tree_visual(root, "", false); }
+    auto print_tree() const -> void {
+        if (root == nullptr) {
+            std::cout << "(empty tree)\n";
+            return;
+        }
+        print_tree_visual(root, "", false);
+    }
 
     // testing functions
     auto reset_rotations() -> void { rotation_count = 0; }
     auto get_rotations() const -> std::size_t { return rotation_count; }
-    auto get_tree_height() -> std::int16_t { return calculate_height(root); }
+    auto get_tree_height() const -> int { return calculate_height(root); }
+    auto to_vector() const -> std::vector<value_type> {
+        std::vector<value_type> out;
+        out.reserve(node_count);
+        collect(root, out);
+        return out;
+    }
+    auto is_valid() const -> bool {
+        if (root == nullptr)
+            return true;
+        if (root->color != Color::BLACK)
+            return false;
+        return check_subtree(root, nullptr, nullptr, nullptr) >= 0;
+    }
 };
 
 #endif // !RB_HPP
