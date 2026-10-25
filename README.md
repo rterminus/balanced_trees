@@ -26,16 +26,33 @@ apresentação, checar `docs/`.
 
 ## Funcionalidades
 
-- Implementação das duas estruturas em header com template (para os testes
-  foram utilizadas estruturas com `<int>`)
+- Implementação das duas estruturas em header com template. Para os testes,
+  foram utilizadas estruturas com `<int>`.
+- `insert` e `remove` retornam `bool`, informando se a árvore foi alterada.
+  Duplicatas são ignoradas e as árvores não são copiáveis, contendo ponteiros
+  próprios.
 - Interface interativa via Terminal (CLI) contemplando:
   - Inserção e remoção de elementos dinâmicos
   - Busca de elementos
   - Impressão em ordem
   - Renderizador visual da hierarquia da árvore (nós direitos aparecem primeiro
-    e nós esquerdos abaixo, verticalmente)
-- Motor de testes de estresse automatizado, com cenários crescentes, decrescentes
-  e aleatórios com até 10.000 nós
+    e nós esquerdos abaixo, verticalmente; na rubro-negra, `[R]` = vermelho e
+    `[B]` = preto)
+  - Verificação dos invariantes da árvore
+- Após cada operação, a árvore é comparada com um
+  `std::set` e seus invariantes são verificados:
+  - AVL: ordem BST, fator de balanceamento em `[-1, 1]` e altura armazenada correta.
+  - Rubro-Negra: raiz preta, nenhum nó vermelho com filho vermelho, mesma
+    altura-negra em todos os caminhos, ordem BST e ponteiros `parent` consistentes.
+  - Cobre casos de borda, como árvore vazia, duplicatas, remoção de inexistente,
+    além de sequências ordenadas e operações aleatórias com várias sementes.
+- **Benchmark comparativo AVL vs Rubro-Negra:**
+  - Inserção ascendente, descendente e aleatória de 10.000, 50.000 e 100.000
+    elementos, e remoção aleatória de metade para cada.
+  - Métricas: tempo (ms e µs/operação), altura, rotações e rotações/operação
+  - 5 repetições por cenário, semente fixa e reprodutível e mesmos dados para
+    as duas árvores.
+  - Tabela no terminal e exportação em CSV para geração de gráficos.
 
 ## Pré-requisitos
 
@@ -73,12 +90,35 @@ cmake --build build
 ./build/balanced_trees
 ```
 
+> Para medir tempo de forma fiel, compile com otimização
+> (`cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`).
+
+### Modos de execução
+
+| Comando                                    | O que faz                                                   |
+| ------------------------------------------ | ----------------------------------------------------------- |
+| `./build/balanced_trees`                   | Menu interativo                                             |
+| `./build/balanced_trees --test`            | Roda apenas os testes de corretude                          |
+| `./build/balanced_trees --bench [arquivo]` | Testes + benchmark; CSV em `arquivo` (padrão `results.csv`) |
+
+O benchmark gera dois arquivos:
+
+- `results.csv`: uma linha por execução
+  (`scenario,n,ops,tree,repeat,time_ms,height,rotations,size,valid`)
+- `results_summary.csv`: médias por cenário/tamanho/árvore
+  (`time_ms_mean`, `time_ms_sd`, `us_per_op`, `height_mean`, `rotations_mean`,
+  `rotations_per_op`, `valid`)
+
+Cenários: `asc_insert`, `desc_insert`, `rand_insert` e `rand_remove`. A coluna
+`valid` indica se os invariantes e o tamanho final estavam corretos.
+
 ## Estrutura do Projeto
 
 - `include/`: Definição e implementação das árvores, utilizando template e
-  contando com as operações clássicas e métodos auxiliares de manipulação
-  e visualização.
+  contando com as operações clássicas e métodos auxiliares de manipulação,
+  visualização e verificação de invariantes.
   - `avl.hpp`
   - `rb.hpp`
 - `src/`:
-  - `main.cpp`: Ponto de entrada contendo a CLI e os cenários de simulação de estresse.
+  - `main.cpp`: Ponto de entrada contendo a CLI, os testes de corretude e o
+    benchmark com exportação CSV.
