@@ -433,17 +433,25 @@ auto print_summary(const std::vector<Summary> &summaries, int repeats) -> void {
     std::cout << std::defaultfloat << "\n";
 }
 
-auto summary_path(const std::string &path) -> std::string {
+auto has_csv_extension(const std::string &path) -> bool {
     const std::string ext = ".csv";
-    if (path.size() > ext.size() &&
-        path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
-        return path.substr(0, path.size() - ext.size()) + "_summary.csv";
-    return path + "_summary.csv";
+    return path.size() > ext.size() &&
+           path.compare(path.size() - ext.size(), ext.size(), ext) == 0;
 }
 
-auto write_csv(const std::string &path, const std::vector<Row> &rows,
+auto raw_path(const std::string &path) -> std::string {
+    return has_csv_extension(path) ? path : path + ".csv";
+}
+
+auto summary_path(const std::string &path) -> std::string {
+    const std::string raw = raw_path(path);
+    return raw.substr(0, raw.size() - 4) + "_summary.csv";
+}
+
+auto write_csv(const std::string &requested_path, const std::vector<Row> &rows,
                const std::vector<Summary> &summaries) -> void {
-    const std::string spath = summary_path(path);
+    const std::string path = raw_path(requested_path);
+    const std::string spath = summary_path(requested_path);
 
     std::ofstream raw(path);
     std::ofstream agg(spath);
