@@ -112,8 +112,35 @@ O benchmark gera dois arquivos:
 Cenários: `asc_insert`, `desc_insert`, `rand_insert` e `rand_remove`. A coluna
 `valid` indica se os invariantes e o tamanho final estavam corretos.
 
+## Geração de Gráficos
+
+Os gráficos são gerados a partir do CSV agregado do benchmark pelo script
+`scripts/plot_results.py`, que depende de `pandas`, `numpy` e `matplotlib`.
+
+1. Gere os dados do benchmark:
+
+```bash
+./build/balanced_trees --bench results.csv
+```
+
+2. Instale as dependências e rode o script:
+
+```bash
+pip install pandas numpy matplotlib
+python scripts/plot_results.py results_summary.csv
+```
+
+Serão gerados três arquivos PDF no diretório atual, cada um com um subplot por
+cenário (inserção ascendente, descendente, aleatória e remoção aleatória):
+
+- `grafico_tempos.pdf`: tempo de execução (ms) e curva teórica $O(n \log n)$
+- `grafico_alturas.pdf`: altura da árvore e limites teóricos de AVL e Rubro-Negra
+- `grafico_rotacoes.pdf`: número de rotações e curva teórica $O(n)$
+
 ## Estrutura do Projeto
 
+- `scripts/`: Scripts auxiliares.
+  - `plot_results.py`: Script de geração de gráficos com base no sumário dos resultados.
 - `include/`: Definição e implementação das árvores, utilizando template e
   contando com as operações clássicas e métodos auxiliares de manipulação,
   visualização e verificação de invariantes.
